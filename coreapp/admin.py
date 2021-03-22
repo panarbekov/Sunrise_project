@@ -1,10 +1,36 @@
 from django.contrib import admin
 from .models import *
-from django.forms import ModelChoiceField
+from django.forms import ModelChoiceField, ModelForm
+from PIL import Image
+from django.utils.safestring import mark_safe
+
+class NoteBookAdminForm(ModelForm):
 
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['image'].help_text = mark_safe(
+            '<span style="color:red;">Загрузите, пожалуйста, изображение с минимальным разрешением {}x{}</span>'.format(
+                *Product.MIN_RESOLUTION
+            )
+        )
+
+    def clean_image(self):
+        image = self.cleaned_data['image']
+        img = Image.open(image)
+        min_height, min_width = Product.MIN_RESOLUTION
+        max_height, max_width = Product.MAX_RESOLUTION
+        if image.size > Product.MAX_IMAGE_SIZE:
+            raise ValidationError('Размер картинки не должен превышать 3 мб')
+        if img.height < min_height or img.width < min_height:
+            raise ValidationError('Разрешение изображение меньше минимального')
+        if img.height > max_height or img.width > max_height:
+            raise ValidationError('Разрешение изображение больше максимального')
+        return image
 
 class NoteBookAdmin(admin.ModelAdmin):
+
+    form = NoteBookAdminForm
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == 'category':
