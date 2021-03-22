@@ -3,8 +3,13 @@ from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey
 from PIL import Image
+from django.urls import reverse
 
 User = get_user_model()
+
+def get_product_url(obj, viewname):
+    ct_model = obj.__class__._meta.model_name
+    return reverse(viewname, kwargs={'ct_model' : ct_model,'slug' : obj.slug})
 
 class MinResolutionErrorException(Exception):
     pass
@@ -70,7 +75,8 @@ class Product(models.Model):
             raise MinResolutionErrorException('Разрешение изображение меньше минимального')
         if img.height > max_height or img.width > max_height:
             raise MaxResolutionErrorException('Разрешение изображение больше максимального')
-        return image
+        super().save(*args, **kwargs)
+
 
 class NoteBook(Product):
     diagonal = models.CharField(max_length=255, verbose_name='Диагональ')
@@ -79,6 +85,13 @@ class NoteBook(Product):
     ram = models.CharField(max_length=255, verbose_name='Оперативная память')
     video = models.CharField(max_length=255, verbose_name='Видеокарта')
 
+    def __str__(self):
+        return "{} : {}".format(self.category.name, self.title)
+    
+    def get_absolute_url(self):
+        return get_product_url(self, 'product_detail')
+    
+    
 class Smartphone(Product):
     diagonal = models.CharField(max_length=255, verbose_name='Диагональ')
     display_type = models.CharField(max_length=255, verbose_name='Тип дисплея')
@@ -90,7 +103,9 @@ class Smartphone(Product):
 
     def __str__(self):
         return "{} : {}".format(self.category.name, self.title)
- 
+    
+    def get_absolute_url(self):
+        return get_product_url(self, 'product_detail')
 
 class CartProduct(models.Model):
     user = models.ForeignKey('Customer', verbose_name='Покупатель', on_delete=models.CASCADE)
